@@ -22,7 +22,7 @@ select,input{width:100%;padding:12px}button{cursor:pointer}.primary{background:v
 .cat{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.cat:first-child{border-top:0;margin-top:0;padding-top:0}
 .cathead{display:grid;grid-template-columns:1fr 170px;gap:10px;align-items:center}.catname{font-weight:800;font-size:17px}
 .counter{display:grid;grid-template-columns:44px 1fr 44px;gap:6px}.counter button{font-size:22px;font-weight:800;background:var(--soft)}.counter input{text-align:center;font-size:20px;font-weight:800;padding:8px}
-.errgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.err{background:var(--warn);padding:10px;border-radius:12px}.err small{display:block;color:var(--muted)}
+.errgrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}.err{background:var(--warn);padding:10px;border-radius:12px}.err small{display:block;color:var(--muted);font-weight:700}.err .counter input{font-size:22px;font-weight:900;min-width:0}
 .scorebar{background:var(--soft);border-radius:14px;padding:13px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}.big{font-size:26px;font-weight:900}.mini{font-size:12px;color:var(--muted)}
 .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{border:1px solid var(--line);border-radius:13px;padding:11px}.stat .v{font-size:22px;font-weight:850}.stat .k{font-size:11px;color:var(--muted)}
 .history{border-top:1px solid var(--line);padding:12px 0}.history:first-child{border-top:0}.history-row{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}.danger{border-color:#d9b0b0;color:#8c2d2d;background:#fff;padding:8px 10px;font-weight:750;white-space:nowrap}
@@ -66,7 +66,7 @@ select,input{width:100%;padding:12px}button{cursor:pointer}.primary{background:v
 <div class="card">
 <div class="hole-nav"><button id="prevHole" class="secondary">←</button><div class="hole-title">Loch <span id="holeNum">1</span> · Par <span id="holePar">4</span></div><button id="nextHole" class="secondary">→</button></div>
 <div id="entry"></div>
-<div class="scorebar"><span>Score Loch</span><span class="big" id="holeScore">0</span></div>
+<div class="scorebar"><span><strong id="holeResult">Par</strong><br><span class="mini">Score Loch</span></span><span class="big" id="holeScore">0</span></div>
 <div class="mini" style="margin-top:7px">Links, rechts und getoppt sind Beobachtungen innerhalb der Schläge und werden nicht nochmals addiert.</div>
 </div>
 <div class="card"><div class="row" style="justify-content:space-between"><div><div class="mini">Runde</div><div class="big"><span id="roundScore">0</span> Schläge</div><div class="mini">Par <span id="roundPar">0</span> · <span id="roundRel">0</span></div></div><button id="saveRoundBtn" class="primary">Runde speichern</button></div></div>
@@ -96,6 +96,23 @@ function blankHole(par){return{par,tee:{shots:0,left:0,right:0,topped:0},short:{
 function score(h){return h.tee.shots+h.short.shots+h.putts+h.penalties}
 function sum(r){return r.holes.reduce((a,h)=>{a.score+=score(h);a.par+=h.par;a.tee+=h.tee.shots;a.short+=h.short.shots;a.putts+=h.putts;a.pen+=h.penalties;a.left+=h.tee.left+h.short.left;a.right+=h.tee.right+h.short.right;a.top+=h.tee.topped+h.short.topped;return a},{score:0,par:0,tee:0,short:0,putts:0,pen:0,left:0,right:0,top:0})}
 function rel(v){return (v>0?"+":"")+v}
+function holeResult(h){
+ const d=score(h)-h.par;
+ if(d<=-2)return "Eagle oder besser";
+ if(d===-1)return "Birdie";
+ if(d===0)return "Par";
+ if(d===1)return "Bogey";
+ if(d===2)return "Doppelbogey";
+ return "Triplebogey+";
+}
+function resultCounts(rounds){
+ const c={"Eagle oder besser":0,"Birdie":0,"Par":0,"Bogey":0,"Doppelbogey":0,"Triplebogey+":0};
+ rounds.forEach(r=>r.holes.forEach(h=>c[holeResult(h)]++));
+ return c;
+}
+function resultBoxes(c){
+ return box("Eagle oder besser",c["Eagle oder besser"])+box("Birdies",c["Birdie"])+box("Pars",c["Par"])+box("Bogeys",c["Bogey"])+box("Doppelbogeys",c["Doppelbogey"])+box("Triplebogey+",c["Triplebogey+"]);
+}
 function show(view){["startView","roundView","statsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));document.getElementById(view).classList.remove("hidden");tabStart.classList.toggle("active",view==="startView");tabStats.classList.toggle("active",view==="statsView")}
 function setupPars(){
  const n=Number(startHoles.value),key=courseSelect.value;
@@ -114,13 +131,13 @@ startRoundBtn.addEventListener("click",()=>{
 });
 function counterHTML(key,label,val){return `<div class="cat"><div class="cathead"><div class="catname">${label}</div><div class="counter"><button data-op="minus" data-key="${key}">−</button><input data-val="${key}" type="number" min="0" value="${val}"><button data-op="plus" data-key="${key}">+</button></div></div></div>`}
 function sectionHTML(key,label,obj){return `<div class="cat"><div class="cathead"><div class="catname">${label}</div><div class="counter"><button data-op="minus" data-key="${key}.shots">−</button><input data-val="${key}.shots" type="number" min="0" value="${obj.shots}"><button data-op="plus" data-key="${key}.shots">+</button></div></div><div class="errgrid">${errHTML(key,"left","⬅️ Links",obj.left)}${errHTML(key,"right","➡️ Rechts",obj.right)}${errHTML(key,"topped","⬆️ Getoppt",obj.topped)}</div></div>`}
-function errHTML(sec,k,l,v){return `<div class="err"><small>${l}</small><div class="counter" style="grid-template-columns:34px 1fr 34px;margin-top:6px"><button data-op="minus" data-key="${sec}.${k}">−</button><input data-val="${sec}.${k}" type="number" min="0" value="${v}"><button data-op="plus" data-key="${sec}.${k}">+</button></div></div>`}
+function errHTML(sec,k,l,v){return `<div class="err"><small>${l}</small><div class="counter" style="grid-template-columns:48px 1fr 48px;margin-top:6px"><button data-op="minus" data-key="${sec}.${k}">−</button><input data-val="${sec}.${k}" type="number" min="0" value="${v}"><button data-op="plus" data-key="${sec}.${k}">+</button></div></div>`}
 function getPath(obj,path){return path.split(".").reduce((o,k)=>o[k],obj)}
 function setPath(obj,path,val){const p=path.split("."),last=p.pop(),target=p.reduce((o,k)=>o[k],obj);target[last]=Math.max(0,val)}
 function renderRound(){
  const h=current.holes[currentHole],s=sum(current);roundPlayer.textContent=current.player;roundCourse.textContent=current.course;holeNum.textContent=currentHole+1;holePar.textContent=h.par;
  entry.innerHTML=sectionHTML("tee","🏌️ Tee → Grün",h.tee)+sectionHTML("short","⛳ Kurze Schläge",h.short)+counterHTML("putts","🟢 Putts",h.putts)+counterHTML("penalties","⚠️ Strafschläge",h.penalties);
- holeScore.textContent=score(h);roundScore.textContent=s.score;roundPar.textContent=s.par;roundRel.textContent=rel(s.score-s.par)+" zu Par";prevHole.disabled=currentHole===0;nextHole.disabled=currentHole===current.holes.length-1;
+ holeScore.textContent=score(h);holeResult.textContent=holeResult(h);roundScore.textContent=s.score;roundPar.textContent=s.par;roundRel.textContent=rel(s.score-s.par)+" zu Par";prevHole.disabled=currentHole===0;nextHole.disabled=currentHole===current.holes.length-1;
  document.querySelectorAll("[data-op]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.key,v=getPath(h,k);setPath(h,k,b.dataset.op==="plus"?v+1:v-1);renderRound()}));
  document.querySelectorAll("[data-val]").forEach(inp=>inp.addEventListener("change",()=>{setPath(h,inp.dataset.val,Number(inp.value)||0);renderRound()}));
 }
@@ -133,8 +150,8 @@ function renderStats(){
  const p=statsPlayer.value,items=db.rounds.map((r,i)=>({r,i})).filter(x=>x.r.player===p),rs=items.map(x=>x.r);
  const rounds9=rs.filter(r=>r.holes.length===9).length,rounds18=rs.filter(r=>r.holes.length===18).length,totalHoles=rs.reduce((a,r)=>a+r.holes.length,0);
  roundOverview.innerHTML=box("Gespielte Runden",rs.length)+box("Gespielte Löcher",totalHoles)+box("9-Loch-Runden",rounds9)+box("18-Loch-Runden",rounds18);
- if(!rs.length){latest.innerHTML='<div class="mini">Noch keine Runde gespeichert.</div>';historyList.innerHTML='<div class="mini">Noch keine Daten.</div>';return}
- const r=rs[rs.length-1],s=sum(r);latest.innerHTML=box("Score",s.score)+box("Par",s.par)+box("Zu Par",rel(s.score-s.par))+box("Tee → Grün",s.tee)+box("Kurze Schläge",s.short)+box("Putts",s.putts)+box("Strafschläge",s.pen)+box("Links / Rechts / Top",`${s.left} / ${s.right} / ${s.top}`);
+ if(!rs.length){latest.innerHTML='<div class="mini">Noch keine Runde gespeichert.</div>';overallResults.innerHTML='<div class="mini">Noch keine Daten.</div>';historyList.innerHTML='<div class="mini">Noch keine Daten.</div>';return}
+ const r=rs[rs.length-1],s=sum(r);overallResults.innerHTML=resultBoxes(resultCounts(rs));latest.innerHTML=resultBoxes(resultCounts([r]))+box("Score",s.score)+box("Par",s.par)+box("Zu Par",rel(s.score-s.par))+box("Tee → Grün",s.tee)+box("Kurze Schläge",s.short)+box("Putts",s.putts)+box("Strafschläge",s.pen)+box("Links / Rechts / Top",`${s.left} / ${s.right} / ${s.top}`);
  historyList.innerHTML=items.slice().reverse().map(({r,i})=>{const x=sum(r);return `<div class="history"><div class="history-row"><div><strong>${r.course} · ${r.holes.length} Loch · Score ${x.score} (${rel(x.score-x.par)})</strong><div class="mini">${new Date(r.date).toLocaleDateString("de-CH")} · Tee→Grün ${x.tee} · Kurz ${x.short} · Putts ${x.putts} · Strafen ${x.pen}</div></div><button class="danger" data-delete-round="${i}">Löschen</button></div></div>`}).join("");
  document.querySelectorAll("[data-delete-round]").forEach(b=>b.addEventListener("click",()=>deleteRound(Number(b.dataset.deleteRound))));
 }
