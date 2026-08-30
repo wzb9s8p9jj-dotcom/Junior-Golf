@@ -91,13 +91,22 @@ kyburg:{name:"Kyburg",pars:[4,5,4,3,4,5,4,3,5,4,3,4,4,3,5,3,4,4]},
 hittnau:{name:"Hittnau",pars:[4,3,5,4,4,3,5,4,4,5,4,4,3,4,3,4,4,5]}
 };
 let db=load(),current=null,currentHole=0;
+const $=id=>document.getElementById(id);
+const tabStart=$("tabStart"),tabStats=$("tabStats"),startView=$("startView"),roundView=$("roundView"),statsView=$("statsView");
+const startPlayer=$("startPlayer"),startHoles=$("startHoles"),courseSelect=$("courseSelect"),customNameWrap=$("customNameWrap"),customName=$("customName");
+const parGrid=$("parGrid"),setupParTotal=$("setupParTotal"),startRoundBtn=$("startRoundBtn");
+const roundPlayer=$("roundPlayer"),roundCourse=$("roundCourse"),backToStart=$("backToStart"),prevHole=$("prevHole"),nextHole=$("nextHole");
+const holeNum=$("holeNum"),holePar=$("holePar"),entry=$("entry"),holeScore=$("holeScore"),holeResultEl=$("holeResult");
+const roundScore=$("roundScore"),roundPar=$("roundPar"),roundRel=$("roundRel"),saveRoundBtn=$("saveRoundBtn");
+const statsPlayer=$("statsPlayer"),roundOverview=$("roundOverview"),latest=$("latest"),overallResults=$("overallResults"),historyList=$("historyList");
+const exportBtn=$("exportBtn"),importFile=$("importFile");
 function load(){try{return JSON.parse(localStorage.getItem(STORE))||{rounds:[]}}catch(e){return{rounds:[]}}}
 function persist(){localStorage.setItem(STORE,JSON.stringify(db))}
 function blankHole(par){return{par,tee:{shots:0,left:0,right:0,topped:0},short:{shots:0,left:0,right:0,topped:0},putts:0,penalties:0}}
 function score(h){return h.tee.shots+h.short.shots+h.putts+h.penalties}
 function sum(r){return r.holes.reduce((a,h)=>{a.score+=score(h);a.par+=h.par;a.tee+=h.tee.shots;a.short+=h.short.shots;a.putts+=h.putts;a.pen+=h.penalties;a.left+=h.tee.left+h.short.left;a.right+=h.tee.right+h.short.right;a.top+=h.tee.topped+h.short.topped;return a},{score:0,par:0,tee:0,short:0,putts:0,pen:0,left:0,right:0,top:0})}
 function rel(v){return (v>0?"+":"")+v}
-function holeResult(h){
+function classifyHole(h){
  const d=score(h)-h.par;
  if(d<=-2)return "Eagle oder besser";
  if(d===-1)return "Birdie";
@@ -108,7 +117,7 @@ function holeResult(h){
 }
 function resultCounts(rounds){
  const c={"Eagle oder besser":0,"Birdie":0,"Par":0,"Bogey":0,"Doppelbogey":0,"Triplebogey+":0};
- rounds.forEach(r=>r.holes.forEach(h=>c[holeResult(h)]++));
+ rounds.forEach(r=>r.holes.forEach(h=>c[classifyHole(h)]++));
  return c;
 }
 function resultBoxes(c){
@@ -138,14 +147,23 @@ function setPath(obj,path,val){const p=path.split("."),last=p.pop(),target=p.red
 function renderRound(){
  const h=current.holes[currentHole],s=sum(current);roundPlayer.textContent=current.player;roundCourse.textContent=current.course;holeNum.textContent=currentHole+1;holePar.textContent=h.par;
  entry.innerHTML=sectionHTML("tee","🏌️ Tee → Grün",h.tee)+sectionHTML("short","⛳ Kurze Schläge",h.short)+counterHTML("putts","🟢 Putts",h.putts)+counterHTML("penalties","⚠️ Strafschläge",h.penalties);
- holeScore.textContent=score(h);holeResult.textContent=holeResult(h);roundScore.textContent=s.score;roundPar.textContent=s.par;roundRel.textContent=rel(s.score-s.par)+" zu Par";prevHole.disabled=currentHole===0;nextHole.disabled=currentHole===current.holes.length-1;
+ holeScore.textContent=score(h);holeResultEl.textContent=classifyHole(h);roundScore.textContent=s.score;roundPar.textContent=s.par;roundRel.textContent=rel(s.score-s.par)+" zu Par";prevHole.disabled=currentHole===0;nextHole.disabled=currentHole===current.holes.length-1;
  document.querySelectorAll("[data-op]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.key,v=getPath(h,k);setPath(h,k,b.dataset.op==="plus"?v+1:v-1);renderRound()}));
  document.querySelectorAll("[data-val]").forEach(inp=>inp.addEventListener("change",()=>{setPath(h,inp.dataset.val,Number(inp.value)||0);renderRound()}));
 }
 prevHole.addEventListener("click",()=>{if(currentHole>0){currentHole--;renderRound()}});
 nextHole.addEventListener("click",()=>{if(currentHole<current.holes.length-1){currentHole++;renderRound()}});
 backToStart.addEventListener("click",()=>{if(confirm("Zur Startseite zurück? Nicht gespeicherte Eingaben gehen verloren.")){current=null;show("startView")}});
-saveRoundBtn.addEventListener("click",()=>{if(!current)return;db.rounds.push(current);persist();statsPlayer.value=current.player;current=null;renderStats();show("statsView")});
+saveRoundBtn.addEventListener("click",()=>{
+ if(!current)return;
+ const saved=current;
+ db.rounds.push(saved);
+ persist();
+ statsPlayer.value=saved.player;
+ current=null;
+ renderStats();
+ show("statsView");
+});
 function box(k,v){return `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`}
 function renderStats(){
  const p=statsPlayer.value,items=db.rounds.map((r,i)=>({r,i})).filter(x=>x.r.player===p),rs=items.map(x=>x.r);
@@ -165,7 +183,7 @@ statsPlayer.addEventListener("change",renderStats);tabStart.addEventListener("cl
 exportBtn.addEventListener("click",()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="junior-golf-daten.json";a.click();URL.revokeObjectURL(u)});
 importFile.addEventListener("change",async()=>{try{const f=importFile.files[0];if(!f)return;const x=JSON.parse(await f.text());if(!x.rounds)throw new Error();if(confirm("Lokale Daten durch Import ersetzen?")){db=x;persist();renderStats();alert("Importiert.")}}catch(e){alert("Ungültige Datei.")}importFile.value=""});
 setupPars();
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js?v=5").catch(()=>{}))}
 </script>
 </body>
 </html>
