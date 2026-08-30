@@ -22,8 +22,8 @@ select,input{width:100%;padding:12px}button{cursor:pointer}.primary{background:v
 .cat{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.cat:first-child{border-top:0;margin-top:0;padding-top:0}
 .cathead{display:grid;grid-template-columns:1fr 170px;gap:10px;align-items:center}.catname{font-weight:800;font-size:17px}
 .counter{display:grid;grid-template-columns:44px 1fr 44px;gap:6px}.counter button{font-size:22px;font-weight:800;background:var(--soft)}.counter input{text-align:center;font-size:20px;font-weight:800;padding:8px}
-.errgrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}.err{background:var(--warn);padding:10px;border-radius:12px}.err small{display:block;color:var(--muted);font-weight:700}.err .counter input{font-size:22px;font-weight:900;min-width:0}
-.scorebar{background:var(--soft);border-radius:14px;padding:13px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}.big{font-size:26px;font-weight:900}.mini{font-size:12px;color:var(--muted)}
+.errgrid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}.err{background:var(--warn);padding:12px;border-radius:14px}.err small{display:block;color:var(--muted);font-weight:700}.err .counter input{font-size:22px;font-weight:900;min-width:0}
+.scorebar{background:var(--soft);border-radius:14px;padding:13px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}.big{font-size:26px;font-weight:900}.mini{font-size:12px;color:var(--muted)}.errline{display:grid;grid-template-columns:1fr 52px 72px 52px;gap:8px;align-items:center}.errlabel{font-size:17px;font-weight:750}.errcount{font-size:26px;font-weight:900;text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 4px;min-width:0}
 .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{border:1px solid var(--line);border-radius:13px;padding:11px}.stat .v{font-size:22px;font-weight:850}.stat .k{font-size:11px;color:var(--muted)}
 .history{border-top:1px solid var(--line);padding:12px 0}.history:first-child{border-top:0}.history-row{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}.danger{border-color:#d9b0b0;color:#8c2d2d;background:#fff;padding:8px 10px;font-weight:750;white-space:nowrap}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}.par-grid{grid-template-columns:repeat(5,1fr)}.cathead{grid-template-columns:1fr}.counter{grid-template-columns:48px 1fr 48px}.app{padding:10px 8px 70px}}
@@ -76,6 +76,7 @@ select,input{width:100%;padding:12px}button{cursor:pointer}.primary{background:v
 <div class="card"><h2 style="margin-top:0">Statistik</h2><label>Junior</label><select id="statsPlayer"><option>Juniorin S</option><option>Junior I</option></select></div>
 <div class="card"><strong>Rundenübersicht</strong><div id="roundOverview" class="summary" style="margin-top:10px"></div></div>
 <div class="card"><strong>Letzte Runde</strong><div id="latest" class="summary" style="margin-top:10px"></div></div>
+<div class="card"><strong>Gesamtstatistik</strong><div id="overallResults" class="summary" style="margin-top:10px"></div></div>
 <div class="card"><strong>Gespeicherte Runden</strong><div id="historyList" style="margin-top:8px"></div></div>
 <div class="card"><strong>Datensicherung</strong><div class="mini" style="margin-top:5px">Die Rundendaten bleiben lokal im Browser.</div><div class="row" style="margin-top:10px"><button id="exportBtn" class="secondary">Exportieren</button><label class="secondary" style="margin:0;cursor:pointer">Importieren<input id="importFile" type="file" accept=".json" style="display:none"></label></div></div>
 </section>
@@ -131,7 +132,7 @@ startRoundBtn.addEventListener("click",()=>{
 });
 function counterHTML(key,label,val){return `<div class="cat"><div class="cathead"><div class="catname">${label}</div><div class="counter"><button data-op="minus" data-key="${key}">−</button><input data-val="${key}" type="number" min="0" value="${val}"><button data-op="plus" data-key="${key}">+</button></div></div></div>`}
 function sectionHTML(key,label,obj){return `<div class="cat"><div class="cathead"><div class="catname">${label}</div><div class="counter"><button data-op="minus" data-key="${key}.shots">−</button><input data-val="${key}.shots" type="number" min="0" value="${obj.shots}"><button data-op="plus" data-key="${key}.shots">+</button></div></div><div class="errgrid">${errHTML(key,"left","⬅️ Links",obj.left)}${errHTML(key,"right","➡️ Rechts",obj.right)}${errHTML(key,"topped","⬆️ Getoppt",obj.topped)}</div></div>`}
-function errHTML(sec,k,l,v){return `<div class="err"><small>${l}</small><div class="counter" style="grid-template-columns:48px 1fr 48px;margin-top:6px"><button data-op="minus" data-key="${sec}.${k}">−</button><input data-val="${sec}.${k}" type="number" min="0" value="${v}"><button data-op="plus" data-key="${sec}.${k}">+</button></div></div>`}
+function errHTML(sec,k,l,v){return `<div class="err"><div class="errline"><div class="errlabel">${l}</div><button data-op="minus" data-key="${sec}.${k}">−</button><div class="errcount">${v}</div><button data-op="plus" data-key="${sec}.${k}">+</button></div></div>`}
 function getPath(obj,path){return path.split(".").reduce((o,k)=>o[k],obj)}
 function setPath(obj,path,val){const p=path.split("."),last=p.pop(),target=p.reduce((o,k)=>o[k],obj);target[last]=Math.max(0,val)}
 function renderRound(){
