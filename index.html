@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#214f37">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Junior Golf</title>
+<style>
+:root{--bg:#f4f6f2;--card:#fff;--text:#172019;--muted:#6b756d;--line:#dfe5df;--green:#214f37;--soft:#e9f2ec;--warn:#f7efe3}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.app{max-width:760px;margin:auto;padding:14px 12px 80px}.top h1{margin:4px 0 0;font-size:26px}.top p{margin:5px 0 0;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 8px 24px rgba(30,50,35,.07)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}select,input,button{font:inherit;border:1px solid var(--line);border-radius:12px;background:white;color:var(--text)}
+select,input{width:100%;padding:12px}button{cursor:pointer}.primary{background:var(--green);color:white;border-color:var(--green);padding:13px 16px;font-weight:800}
+.secondary{padding:11px 14px;font-weight:700}.ghost{border:0;background:transparent;color:var(--green);padding:8px}.hidden{display:none!important}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tab{padding:12px;font-weight:800}.tab.active{background:var(--green);color:#fff;border-color:var(--green)}
+.par-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:6px}.par-cell{text-align:center}.par-cell label{font-size:10px;margin-bottom:3px}.par-cell input{text-align:center;padding:9px 2px;font-weight:800}
+.hole-nav{display:grid;grid-template-columns:46px 1fr 46px;gap:8px;align-items:center}.hole-title{text-align:center;font-size:19px;font-weight:850}
+.cat{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.cat:first-child{border-top:0;margin-top:0;padding-top:0}
+.cathead{display:grid;grid-template-columns:1fr 170px;gap:10px;align-items:center}.catname{font-weight:800;font-size:17px}
+.counter{display:grid;grid-template-columns:44px 1fr 44px;gap:6px}.counter button{font-size:22px;font-weight:800;background:var(--soft)}.counter input{text-align:center;font-size:20px;font-weight:800;padding:8px}
+.errgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.err{background:var(--warn);padding:10px;border-radius:12px}.err small{display:block;color:var(--muted)}
+.scorebar{background:var(--soft);border-radius:14px;padding:13px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}.big{font-size:26px;font-weight:900}.mini{font-size:12px;color:var(--muted)}
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{border:1px solid var(--line);border-radius:13px;padding:11px}.stat .v{font-size:22px;font-weight:850}.stat .k{font-size:11px;color:var(--muted)}
+.history{border-top:1px solid var(--line);padding:10px 0}.history:first-child{border-top:0}
+@media(max-width:520px){.grid2{grid-template-columns:1fr}.par-grid{grid-template-columns:repeat(5,1fr)}.cathead{grid-template-columns:1fr}.counter{grid-template-columns:48px 1fr 48px}.app{padding:10px 8px 70px}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="top"><h1>Junior Golf</h1><p>Juniorin S · Junior I</p></div>
+
+<div class="card"><div class="tabs">
+<button id="tabStart" class="tab active">Neue Runde</button>
+<button id="tabStats" class="tab">Statistik</button>
+</div></div>
+
+<section id="startView">
+<div class="card">
+<h2 style="margin-top:0">Neue Runde</h2>
+<div class="grid2">
+<div><label>Junior</label><select id="startPlayer"><option>Juniorin S</option><option>Junior I</option></select></div>
+<div><label>Anzahl Löcher</label><select id="startHoles"><option value="9">9 Loch</option><option value="18">18 Loch</option></select></div>
+</div>
+<div style="margin-top:12px"><label>Platz</label><select id="courseSelect">
+<option value="bubikon">Bubikon</option>
+<option value="zuerichsee">Zürichsee</option>
+<option value="laegern">Lägern</option>
+<option value="kyburg">Kyburg</option>
+<option value="hittnau">Hittnau</option>
+<option value="custom">Eigener Platz …</option>
+</select></div>
+<div id="customNameWrap" class="hidden" style="margin-top:12px"><label>Name eigener Platz</label><input id="customName" placeholder="z. B. Golfclub Muster"></div>
+<div style="margin-top:14px"><div class="row" style="justify-content:space-between"><strong>Par pro Loch</strong><span class="mini">Alle Werte sind editierbar</span></div>
+<div id="parGrid" class="par-grid" style="margin-top:8px"></div>
+<div class="row" style="justify-content:space-between;margin-top:10px"><span class="mini">Gesamt-Par</span><strong id="setupParTotal">0</strong></div></div>
+<button id="startRoundBtn" class="primary" style="width:100%;margin-top:16px">Runde starten</button>
+</div>
+</section>
+
+<section id="roundView" class="hidden">
+<div class="card"><div class="row" style="justify-content:space-between"><div><div id="roundPlayer" class="mini"></div><strong id="roundCourse"></strong></div><button id="backToStart" class="ghost">← Start</button></div></div>
+<div class="card">
+<div class="hole-nav"><button id="prevHole" class="secondary">←</button><div class="hole-title">Loch <span id="holeNum">1</span> · Par <span id="holePar">4</span></div><button id="nextHole" class="secondary">→</button></div>
+<div id="entry"></div>
+<div class="scorebar"><span>Score Loch</span><span class="big" id="holeScore">0</span></div>
+<div class="mini" style="margin-top:7px">Links, rechts und getoppt sind Beobachtungen innerhalb der Schläge und werden nicht nochmals addiert.</div>
+</div>
+<div class="card"><div class="row" style="justify-content:space-between"><div><div class="mini">Runde</div><div class="big"><span id="roundScore">0</span> Schläge</div><div class="mini">Par <span id="roundPar">0</span> · <span id="roundRel">0</span></div></div><button id="saveRoundBtn" class="primary">Runde speichern</button></div></div>
+</section>
+
+<section id="statsView" class="hidden">
+<div class="card"><h2 style="margin-top:0">Statistik</h2><label>Junior</label><select id="statsPlayer"><option>Juniorin S</option><option>Junior I</option></select></div>
+<div class="card"><strong>Letzte Runde</strong><div id="latest" class="summary" style="margin-top:10px"></div></div>
+<div class="card"><strong>Rundenverlauf</strong><div id="historyList" style="margin-top:8px"></div></div>
+<div class="card"><strong>Datensicherung</strong><div class="mini" style="margin-top:5px">Die Rundendaten bleiben lokal im Browser.</div><div class="row" style="margin-top:10px"><button id="exportBtn" class="secondary">Exportieren</button><label class="secondary" style="margin:0;cursor:pointer">Importieren<input id="importFile" type="file" accept=".json" style="display:none"></label></div></div>
+</section>
+</div>
+<script>
+const STORE="juniorGolfPWA1";
+const courses={
+bubikon:{name:"Bubikon",pars:[4,4,3,4,4,4,3,3,4,4,4,3,4,4,4,3,3,4]},
+zuerichsee:{name:"Zürichsee",pars:[4,3,4,5,4,3,4,5,4,5,4,4,4,4,3,5,4,4]},
+laegern:{name:"Lägern",pars:[4,4,5,3,5,4,4,4,3,4,5,4,4,3,5,4,4,3]},
+kyburg:{name:"Kyburg",pars:[4,5,4,3,4,5,4,3,5,4,3,4,4,3,5,3,4,4]},
+hittnau:{name:"Hittnau",pars:[4,3,5,4,4,3,5,4,4,5,4,4,3,4,3,4,4,5]}
+};
+let db=load(),current=null,currentHole=0;
+function load(){try{return JSON.parse(localStorage.getItem(STORE))||{rounds:[]}}catch(e){return{rounds:[]}}}
+function persist(){localStorage.setItem(STORE,JSON.stringify(db))}
+function blankHole(par){return{par,tee:{shots:0,left:0,right:0,topped:0},short:{shots:0,left:0,right:0,topped:0},putts:0,penalties:0}}
+function score(h){return h.tee.shots+h.short.shots+h.putts+h.penalties}
+function sum(r){return r.holes.reduce((a,h)=>{a.score+=score(h);a.par+=h.par;a.tee+=h.tee.shots;a.short+=h.short.shots;a.putts+=h.putts;a.pen+=h.penalties;a.left+=h.tee.left+h.short.left;a.right+=h.tee.right+h.short.right;a.top+=h.tee.topped+h.short.topped;return a},{score:0,par:0,tee:0,short:0,putts:0,pen:0,left:0,right:0,top:0})}
+function rel(v){return (v>0?"+":"")+v}
+function show(view){["startView","roundView","statsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));document.getElementById(view).classList.remove("hidden");tabStart.classList.toggle("active",view==="startView");tabStats.classList.toggle("active",view==="statsView")}
+function setupPars(){
+ const n=Number(startHoles.value),key=courseSelect.value;
+ let pars=key==="custom"?Array(n).fill(4):courses[key].pars.slice(0,n);
+ while(pars.length<n) pars.push(pars[pars.length%9]||4);
+ parGrid.innerHTML=pars.map((p,i)=>`<div class="par-cell"><label>${i+1}</label><input class="parInput" type="number" min="2" max="7" value="${p}"></div>`).join("");
+ document.querySelectorAll(".parInput").forEach(x=>x.addEventListener("input",calcSetupPar)); calcSetupPar();
+}
+function calcSetupPar(){setupParTotal.textContent=[...document.querySelectorAll(".parInput")].reduce((a,x)=>a+(Number(x.value)||0),0)}
+courseSelect.addEventListener("change",()=>{customNameWrap.classList.toggle("hidden",courseSelect.value!=="custom");setupPars()});
+startHoles.addEventListener("change",setupPars);
+startRoundBtn.addEventListener("click",()=>{
+ const pars=[...document.querySelectorAll(".parInput")].map(x=>Math.max(2,Math.min(7,Number(x.value)||4)));
+ const cname=courseSelect.value==="custom"?(customName.value.trim()||"Eigener Platz"):courses[courseSelect.value].name;
+ current={player:startPlayer.value,course:cname,date:new Date().toISOString(),holes:pars.map(blankHole)};currentHole=0;renderRound();show("roundView");
+});
+function counterHTML(key,label,val){return `<div class="cat"><div class="cathead"><div class="catname">${label}</div><div class="counter"><button data-op="minus" data-key="${key}">−</button><input data-val="${key}" type="number" min="0" value="${val}"><button data-op="plus" data-key="${key}">+</button></div></div></div>`}
+function sectionHTML(key,label,obj){return `<div class="cat"><div class="cathead"><div class="catname">${label}</div><div class="counter"><button data-op="minus" data-key="${key}.shots">−</button><input data-val="${key}.shots" type="number" min="0" value="${obj.shots}"><button data-op="plus" data-key="${key}.shots">+</button></div></div><div class="errgrid">${errHTML(key,"left","⬅️ Links",obj.left)}${errHTML(key,"right","➡️ Rechts",obj.right)}${errHTML(key,"topped","⬆️ Getoppt",obj.topped)}</div></div>`}
+function errHTML(sec,k,l,v){return `<div class="err"><small>${l}</small><div class="counter" style="grid-template-columns:34px 1fr 34px;margin-top:6px"><button data-op="minus" data-key="${sec}.${k}">−</button><input data-val="${sec}.${k}" type="number" min="0" value="${v}"><button data-op="plus" data-key="${sec}.${k}">+</button></div></div>`}
+function getPath(obj,path){return path.split(".").reduce((o,k)=>o[k],obj)}
+function setPath(obj,path,val){const p=path.split("."),last=p.pop(),target=p.reduce((o,k)=>o[k],obj);target[last]=Math.max(0,val)}
+function renderRound(){
+ const h=current.holes[currentHole],s=sum(current);roundPlayer.textContent=current.player;roundCourse.textContent=current.course;holeNum.textContent=currentHole+1;holePar.textContent=h.par;
+ entry.innerHTML=sectionHTML("tee","🏌️ Tee → Grün",h.tee)+sectionHTML("short","⛳ Kurze Schläge",h.short)+counterHTML("putts","🟢 Putts",h.putts)+counterHTML("penalties","⚠️ Strafschläge",h.penalties);
+ holeScore.textContent=score(h);roundScore.textContent=s.score;roundPar.textContent=s.par;roundRel.textContent=rel(s.score-s.par)+" zu Par";prevHole.disabled=currentHole===0;nextHole.disabled=currentHole===current.holes.length-1;
+ document.querySelectorAll("[data-op]").forEach(b=>b.addEventListener("click",()=>{const k=b.dataset.key,v=getPath(h,k);setPath(h,k,b.dataset.op==="plus"?v+1:v-1);renderRound()}));
+ document.querySelectorAll("[data-val]").forEach(inp=>inp.addEventListener("change",()=>{setPath(h,inp.dataset.val,Number(inp.value)||0);renderRound()}));
+}
+prevHole.addEventListener("click",()=>{if(currentHole>0){currentHole--;renderRound()}});
+nextHole.addEventListener("click",()=>{if(currentHole<current.holes.length-1){currentHole++;renderRound()}});
+backToStart.addEventListener("click",()=>{if(confirm("Zur Startseite zurück? Nicht gespeicherte Eingaben gehen verloren.")){current=null;show("startView")}});
+saveRoundBtn.addEventListener("click",()=>{if(!current)return;db.rounds.push(current);persist();statsPlayer.value=current.player;current=null;renderStats();show("statsView")});
+function box(k,v){return `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`}
+function renderStats(){
+ const p=statsPlayer.value,rs=db.rounds.filter(r=>r.player===p);
+ if(!rs.length){latest.innerHTML='<div class="mini">Noch keine Runde gespeichert.</div>';historyList.innerHTML='<div class="mini">Noch keine Daten.</div>';return}
+ const r=rs[rs.length-1],s=sum(r);latest.innerHTML=box("Score",s.score)+box("Par",s.par)+box("Zu Par",rel(s.score-s.par))+box("Tee → Grün",s.tee)+box("Kurze Schläge",s.short)+box("Putts",s.putts)+box("Strafschläge",s.pen)+box("Links / Rechts / Top",`${s.left} / ${s.right} / ${s.top}`);
+ historyList.innerHTML=rs.slice().reverse().map(r=>{const x=sum(r);return `<div class="history"><strong>${r.course} · ${r.holes.length} Loch · Score ${x.score} (${rel(x.score-x.par)})</strong><div class="mini">${new Date(r.date).toLocaleDateString("de-CH")} · Tee→Grün ${x.tee} · Kurz ${x.short} · Putts ${x.putts} · Strafen ${x.pen}</div></div>`}).join("");
+}
+statsPlayer.addEventListener("change",renderStats);tabStart.addEventListener("click",()=>show("startView"));tabStats.addEventListener("click",()=>{renderStats();show("statsView")});
+exportBtn.addEventListener("click",()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="junior-golf-daten.json";a.click();URL.revokeObjectURL(u)});
+importFile.addEventListener("change",async()=>{try{const f=importFile.files[0];if(!f)return;const x=JSON.parse(await f.text());if(!x.rounds)throw new Error();if(confirm("Lokale Daten durch Import ersetzen?")){db=x;persist();renderStats();alert("Importiert.")}}catch(e){alert("Ungültige Datei.")}importFile.value=""});
+setupPars();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script>
+</body>
+</html>
