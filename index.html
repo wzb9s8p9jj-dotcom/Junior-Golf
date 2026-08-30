@@ -75,7 +75,7 @@ select,input{width:100%;padding:12px}button{cursor:pointer}.primary{background:v
 <section id="statsView" class="hidden">
 <div class="card"><h2 style="margin-top:0">Statistik</h2><label>Junior</label><select id="statsPlayer"><option>Juniorin S</option><option>Junior I</option></select></div>
 <div class="card"><strong>Rundenübersicht</strong><div id="roundOverview" class="summary" style="margin-top:10px"></div></div>
-<div class="card"><strong>Letzte Runde</strong><div id="latest" class="summary" style="margin-top:10px"></div></div>
+<div class="card"><div class="row" style="justify-content:space-between"><strong>Ausgewählte Runde</strong><span id="selectedRoundLabel" class="mini"></span></div><div id="latest" class="summary" style="margin-top:10px"></div></div>
 <div class="card"><strong>Gesamtstatistik</strong><div id="overallResults" class="summary" style="margin-top:10px"></div></div>
 <div class="card"><strong>Gespeicherte Runden</strong><div id="historyList" style="margin-top:8px"></div></div>
 <div class="card"><strong>Datensicherung</strong><div class="mini" style="margin-top:5px">Die Rundendaten bleiben lokal im Browser.</div><div class="row" style="margin-top:10px"><button id="exportBtn" class="secondary">Exportieren</button><label class="secondary" style="margin:0;cursor:pointer">Importieren<input id="importFile" type="file" accept=".json" style="display:none"></label></div></div>
@@ -90,7 +90,7 @@ laegern:{name:"Lägern",pars:[4,4,5,3,5,4,4,4,3,4,5,4,4,3,5,4,4,3]},
 kyburg:{name:"Kyburg",pars:[4,5,4,3,4,5,4,3,5,4,3,4,4,3,5,3,4,4]},
 hittnau:{name:"Hittnau",pars:[4,3,5,4,4,3,5,4,4,5,4,4,3,4,3,4,4,5]}
 };
-let db=load(),current=null,currentHole=0;
+let db=load(),current=null,currentHole=0,selectedRoundIndex=null;
 const $=id=>document.getElementById(id);
 const tabStart=$("tabStart"),tabStats=$("tabStats"),startView=$("startView"),roundView=$("roundView"),statsView=$("statsView");
 const startPlayer=$("startPlayer"),startHoles=$("startHoles"),courseSelect=$("courseSelect"),customNameWrap=$("customNameWrap"),customName=$("customName");
@@ -98,7 +98,7 @@ const parGrid=$("parGrid"),setupParTotal=$("setupParTotal"),startRoundBtn=$("sta
 const roundPlayer=$("roundPlayer"),roundCourse=$("roundCourse"),backToStart=$("backToStart"),prevHole=$("prevHole"),nextHole=$("nextHole");
 const holeNum=$("holeNum"),holePar=$("holePar"),entry=$("entry"),holeScore=$("holeScore"),holeResultEl=$("holeResult");
 const roundScore=$("roundScore"),roundPar=$("roundPar"),roundRel=$("roundRel"),saveRoundBtn=$("saveRoundBtn");
-const statsPlayer=$("statsPlayer"),roundOverview=$("roundOverview"),latest=$("latest"),overallResults=$("overallResults"),historyList=$("historyList");
+const statsPlayer=$("statsPlayer"),roundOverview=$("roundOverview"),latest=$("latest"),overallResults=$("overallResults"),historyList=$("historyList"),selectedRoundLabel=$("selectedRoundLabel");
 const exportBtn=$("exportBtn"),importFile=$("importFile");
 function load(){try{return JSON.parse(localStorage.getItem(STORE))||{rounds:[]}}catch(e){return{rounds:[]}}}
 function persist(){localStorage.setItem(STORE,JSON.stringify(db))}
@@ -187,47 +187,59 @@ saveRoundBtn.addEventListener("click",()=>{
 });
 function box(k,v){return `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`}
 function renderStats(){
- const p=statsPlayer.value,items=db.rounds.map((r,i)=>({r,i})).filter(x=>x.r.player===p),rs=items.map(x=>x.r);
- const rounds9=rs.filter(r=>r.holes.length===9).length,rounds18=rs.filter(r=>r.holes.length===18).length,totalHoles=rs.reduce((a,r)=>a+r.holes.length,0);
- roundOverview.innerHTML=box("Gespielte Runden",rs.length)+box("Gespielte Löcher",totalHoles)+box("9-Loch-Runden",rounds9)+box("18-Loch-Runden",rounds18);
- if(!rs.length){latest.innerHTML='<div class="mini">Noch keine Runde gespeichert.</div>';overallResults.innerHTML='<div class="mini">Noch keine Daten.</div>';historyList.innerHTML='<div class="mini">Noch keine Daten.</div>';return}
- const r=rs[rs.length-1],s=sum(r),all=totalSum(rs);
+ const p=statsPlayer.value;
+ const indexed=db.rounds.map((r,i)=>({r,i})).filter(x=>x.r.player===p);
+ if(!indexed.length){
+   selectedRoundIndex=null;
+   selectedRoundLabel.textContent="";
+   latest.innerHTML='<div class="mini">Noch keine Runde gespeichert.</div>';
+   overallResults.innerHTML='<div class="mini">Noch keine Daten.</div>';
+   historyList.innerHTML='<div class="mini">Noch keine Daten.</div>';
+   return;
+ }
+ if(selectedRoundIndex===null || !indexed.some(x=>x.i===selectedRoundIndex)){
+   selectedRoundIndex=indexed[indexed.length-1].i;
+ }
+ const r=db.rounds[selectedRoundIndex],s=sum(r),rs=indexed.map(x=>x.r),all=totalSum(rs);
+ selectedRoundLabel.textContent=`${r.course} · ${new Date(r.date).toLocaleDateString("de-CH")}`;
  latest.innerHTML=
    resultBoxes(resultCounts([r]))+
    puttBoxes(puttCounts([r]))+
-   box("Score",s.score)+
-   box("Par",s.par)+
-   box("Zu Par",rel(s.score-s.par))+
-   box("Tee → Grün",s.tee)+
-   box("Kurze Schläge",s.short)+
-   box("Putts",s.putts)+
-   box("Strafschläge",s.pen)+
-   box("Links / Rechts / Top",`${s.left} / ${s.right} / ${s.top}`);
-
+   box("Score",s.score)+box("Par",s.par)+box("Zu Par",rel(s.score-s.par))+
+   box("Tee → Grün",s.tee)+box("Kurze Schläge",s.short)+box("Putts",s.putts)+
+   box("Strafschläge",s.pen)+box("Links / Rechts / Top",`${s.left} / ${s.right} / ${s.top}`);
  overallResults.innerHTML=
    resultBoxes(resultCounts(rs))+
    puttBoxes(puttCounts(rs))+
-   box("Score",all.score)+
-   box("Par",all.par)+
-   box("Zu Par",rel(all.score-all.par))+
-   box("Tee → Grün",all.tee)+
-   box("Kurze Schläge",all.short)+
-   box("Putts",all.putts)+
-   box("Strafschläge",all.pen)+
-   box("Links / Rechts / Top",`${all.left} / ${all.right} / ${all.top}`);
- historyList.innerHTML=items.slice().reverse().map(({r,i})=>{const x=sum(r);return `<div class="history"><div class="history-row"><div><strong>${r.course} · ${r.holes.length} Loch · Score ${x.score} (${rel(x.score-x.par)})</strong><div class="mini">${new Date(r.date).toLocaleDateString("de-CH")} · Tee→Grün ${x.tee} · Kurz ${x.short} · Putts ${x.putts} · Strafen ${x.pen}</div></div><button class="danger" data-delete-round="${i}">Löschen</button></div></div>`}).join("");
- document.querySelectorAll("[data-delete-round]").forEach(b=>b.addEventListener("click",()=>deleteRound(Number(b.dataset.deleteRound))));
+   box("Score",all.score)+box("Par",all.par)+box("Zu Par",rel(all.score-all.par))+
+   box("Tee → Grün",all.tee)+box("Kurze Schläge",all.short)+box("Putts",all.putts)+
+   box("Strafschläge",all.pen)+box("Links / Rechts / Top",`${all.left} / ${all.right} / ${all.top}`);
+ historyList.innerHTML=indexed.slice().reverse().map(({r,i})=>{
+   const x=sum(r),sel=i===selectedRoundIndex;
+   return `<div class="history" style="${sel?'background:var(--soft);padding:10px;border-radius:12px;':''}">
+     <button class="roundSelect" data-index="${i}" style="width:100%;text-align:left;border:0;background:transparent;padding:0">
+       <strong>${r.course} · ${r.holes.length} Loch · Score ${x.score} (${rel(x.score-x.par)})</strong>
+       <div class="mini">${new Date(r.date).toLocaleDateString("de-CH")} · Tee→Grün ${x.tee} · Kurz ${x.short} · Putts ${x.putts} · Strafen ${x.pen}</div>
+       <div class="mini" style="margin-top:4px;color:var(--green);font-weight:800">${sel?'✓ Ausgewählt':'Runde ansehen'}</div>
+     </button>
+     <button class="deleteRound secondary" data-index="${i}" style="margin-top:8px">Löschen</button>
+   </div>`;
+ }).join("");
+ document.querySelectorAll(".roundSelect").forEach(b=>b.addEventListener("click",()=>{
+   selectedRoundIndex=Number(b.dataset.index);renderStats();window.scrollTo({top:0,behavior:"smooth"});
+ }));
+ document.querySelectorAll(".deleteRound").forEach(b=>b.addEventListener("click",()=>{
+   const i=Number(b.dataset.index),rr=db.rounds[i];
+   if(confirm(`${rr.course} vom ${new Date(rr.date).toLocaleDateString("de-CH")} wirklich löschen?`)){
+     db.rounds.splice(i,1);persist();selectedRoundIndex=null;renderStats();
+   }
+ }));
 }
-function deleteRound(index){
- const r=db.rounds[index]; if(!r)return;
- const d=new Date(r.date).toLocaleDateString("de-CH");
- if(confirm(`Runde von ${r.player} am ${d} auf ${r.course} wirklich löschen?`)){db.rounds.splice(index,1);persist();renderStats()}
-}
-statsPlayer.addEventListener("change",renderStats);tabStart.addEventListener("click",()=>show("startView"));tabStats.addEventListener("click",()=>{renderStats();show("statsView")});
+statsPlayer.addEventListener("change",()=>{selectedRoundIndex=null;renderStats()});tabStart.addEventListener("click",()=>show("startView"));tabStats.addEventListener("click",()=>{renderStats();show("statsView")});
 exportBtn.addEventListener("click",()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="junior-golf-daten.json";a.click();URL.revokeObjectURL(u)});
 importFile.addEventListener("change",async()=>{try{const f=importFile.files[0];if(!f)return;const x=JSON.parse(await f.text());if(!x.rounds)throw new Error();if(confirm("Lokale Daten durch Import ersetzen?")){db=x;persist();renderStats();alert("Importiert.")}}catch(e){alert("Ungültige Datei.")}importFile.value=""});
 setupPars();
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js?v=6").catch(()=>{}))}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js?v=7").catch(()=>{}))}
 </script>
 </body>
 </html>
