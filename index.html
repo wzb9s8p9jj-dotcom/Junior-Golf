@@ -25,7 +25,7 @@ select,input{width:100%;padding:12px}button{cursor:pointer}.primary{background:v
 .errgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.err{background:var(--warn);padding:10px;border-radius:12px}.err small{display:block;color:var(--muted)}
 .scorebar{background:var(--soft);border-radius:14px;padding:13px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}.big{font-size:26px;font-weight:900}.mini{font-size:12px;color:var(--muted)}
 .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{border:1px solid var(--line);border-radius:13px;padding:11px}.stat .v{font-size:22px;font-weight:850}.stat .k{font-size:11px;color:var(--muted)}
-.history{border-top:1px solid var(--line);padding:10px 0}.history:first-child{border-top:0}
+.history{border-top:1px solid var(--line);padding:12px 0}.history:first-child{border-top:0}.history-row{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}.danger{border-color:#d9b0b0;color:#8c2d2d;background:#fff;padding:8px 10px;font-weight:750;white-space:nowrap}
 @media(max-width:520px){.grid2{grid-template-columns:1fr}.par-grid{grid-template-columns:repeat(5,1fr)}.cathead{grid-template-columns:1fr}.counter{grid-template-columns:48px 1fr 48px}.app{padding:10px 8px 70px}}
 </style>
 </head>
@@ -74,8 +74,9 @@ select,input{width:100%;padding:12px}button{cursor:pointer}.primary{background:v
 
 <section id="statsView" class="hidden">
 <div class="card"><h2 style="margin-top:0">Statistik</h2><label>Junior</label><select id="statsPlayer"><option>Juniorin S</option><option>Junior I</option></select></div>
+<div class="card"><strong>Rundenübersicht</strong><div id="roundOverview" class="summary" style="margin-top:10px"></div></div>
 <div class="card"><strong>Letzte Runde</strong><div id="latest" class="summary" style="margin-top:10px"></div></div>
-<div class="card"><strong>Rundenverlauf</strong><div id="historyList" style="margin-top:8px"></div></div>
+<div class="card"><strong>Gespeicherte Runden</strong><div id="historyList" style="margin-top:8px"></div></div>
 <div class="card"><strong>Datensicherung</strong><div class="mini" style="margin-top:5px">Die Rundendaten bleiben lokal im Browser.</div><div class="row" style="margin-top:10px"><button id="exportBtn" class="secondary">Exportieren</button><label class="secondary" style="margin:0;cursor:pointer">Importieren<input id="importFile" type="file" accept=".json" style="display:none"></label></div></div>
 </section>
 </div>
@@ -129,10 +130,18 @@ backToStart.addEventListener("click",()=>{if(confirm("Zur Startseite zurück? Ni
 saveRoundBtn.addEventListener("click",()=>{if(!current)return;db.rounds.push(current);persist();statsPlayer.value=current.player;current=null;renderStats();show("statsView")});
 function box(k,v){return `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`}
 function renderStats(){
- const p=statsPlayer.value,rs=db.rounds.filter(r=>r.player===p);
+ const p=statsPlayer.value,items=db.rounds.map((r,i)=>({r,i})).filter(x=>x.r.player===p),rs=items.map(x=>x.r);
+ const rounds9=rs.filter(r=>r.holes.length===9).length,rounds18=rs.filter(r=>r.holes.length===18).length,totalHoles=rs.reduce((a,r)=>a+r.holes.length,0);
+ roundOverview.innerHTML=box("Gespielte Runden",rs.length)+box("Gespielte Löcher",totalHoles)+box("9-Loch-Runden",rounds9)+box("18-Loch-Runden",rounds18);
  if(!rs.length){latest.innerHTML='<div class="mini">Noch keine Runde gespeichert.</div>';historyList.innerHTML='<div class="mini">Noch keine Daten.</div>';return}
  const r=rs[rs.length-1],s=sum(r);latest.innerHTML=box("Score",s.score)+box("Par",s.par)+box("Zu Par",rel(s.score-s.par))+box("Tee → Grün",s.tee)+box("Kurze Schläge",s.short)+box("Putts",s.putts)+box("Strafschläge",s.pen)+box("Links / Rechts / Top",`${s.left} / ${s.right} / ${s.top}`);
- historyList.innerHTML=rs.slice().reverse().map(r=>{const x=sum(r);return `<div class="history"><strong>${r.course} · ${r.holes.length} Loch · Score ${x.score} (${rel(x.score-x.par)})</strong><div class="mini">${new Date(r.date).toLocaleDateString("de-CH")} · Tee→Grün ${x.tee} · Kurz ${x.short} · Putts ${x.putts} · Strafen ${x.pen}</div></div>`}).join("");
+ historyList.innerHTML=items.slice().reverse().map(({r,i})=>{const x=sum(r);return `<div class="history"><div class="history-row"><div><strong>${r.course} · ${r.holes.length} Loch · Score ${x.score} (${rel(x.score-x.par)})</strong><div class="mini">${new Date(r.date).toLocaleDateString("de-CH")} · Tee→Grün ${x.tee} · Kurz ${x.short} · Putts ${x.putts} · Strafen ${x.pen}</div></div><button class="danger" data-delete-round="${i}">Löschen</button></div></div>`}).join("");
+ document.querySelectorAll("[data-delete-round]").forEach(b=>b.addEventListener("click",()=>deleteRound(Number(b.dataset.deleteRound))));
+}
+function deleteRound(index){
+ const r=db.rounds[index]; if(!r)return;
+ const d=new Date(r.date).toLocaleDateString("de-CH");
+ if(confirm(`Runde von ${r.player} am ${d} auf ${r.course} wirklich löschen?`)){db.rounds.splice(index,1);persist();renderStats()}
 }
 statsPlayer.addEventListener("change",renderStats);tabStart.addEventListener("click",()=>show("startView"));tabStats.addEventListener("click",()=>{renderStats();show("statsView")});
 exportBtn.addEventListener("click",()=>{const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="junior-golf-daten.json";a.click();URL.revokeObjectURL(u)});
